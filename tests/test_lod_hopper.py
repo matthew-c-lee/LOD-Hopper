@@ -1,8 +1,6 @@
-from minecraft_teleport import load_line, Dimension
+from lod_hopper.lod_hopper import load_line
 import pytest
-from unittest.mock import patch, MagicMock
 
-# @patch("minecraft_teleport.teleport_set_dimension", MagicMock())
 @pytest.mark.parametrize("start, end", [
     (3000, -3000),
     (3000, 6000),
