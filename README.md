@@ -1,15 +1,38 @@
-Script for loading a wide area in Minecraft via teleporting around in creative mode. 
+# Lod Hopper
+
+Utility for loading a wide area in Minecraft via teleporting around in creative mode. 
 Created for the purpose of generating "LODs" for the "Distant Horizons" mod on servers, since Chunky can't do this.
 
-options:
-  -h, --help            show this help message and exit
-  -r DESIRED_RADIUS, --desired-radius DESIRED_RADIUS
-                        Desired radius to be loaded (required)
-  -e EXCLUDE, --exclude EXCLUDE
-                        Exclude any inner radius already completed (default: 0)
-  -s SECONDS_PER_TP, --seconds-per-tp SECONDS_PER_TP
-                        Seconds to wait per teleport - shorter if you have a faster PC (default: 3)
-  -b BLOCKS_PER_TP, --blocks-per-tp BLOCKS_PER_TP
-                        Radius of blocks loaded per teleport jump (default: 100)
-  -y HEIGHT, --height HEIGHT
-                        Your Y axis coordinate each time you teleport (default: 180)
+### Installation
+
+1. Install the virtual environment with poetry.
+
+    `poetry install --no-dev`
+
+2. Activate the virtual environment.
+
+    `poetry shell`
+
+3. Run with `lod_hopper` in the terminal.
+
+### Usage
+
+After typing in a valid command (ex: `lod_hopper -r 3000`), 
+
+### Command Options
+
+- **`--desired-radius` or `-r`**
+  - Desired radius to be loaded (**required**)
+
+- **`--exclude` or `-e`**
+  - Exclude any inner radius already completed (default: 0)
+
+- **`--seconds-per-tp` or `-s`**
+  - Seconds to wait per teleport (default: 3)
+  - Modify this depending on how long it takes to render chunks
+
+- **`--blocks-per-tp` or `-b`**
+  - Radius of blocks loaded per teleport jump (default: 100)
+
+- **`--height` or `-y`**
+  - Y-axis coordinate each time you teleport (default: 180)
