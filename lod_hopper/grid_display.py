@@ -1,7 +1,7 @@
 import numpy as np
 from typing import Tuple, Dict
 from dataclasses import dataclass
-from lod_hopper.types import Coordinate, Blocks
+from lod_hopper.schemas import Coordinate, Blocks
 import math
 
 # Constants to represent the states in the grid

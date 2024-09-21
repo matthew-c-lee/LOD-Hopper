@@ -4,7 +4,7 @@ from lod_hopper.grid_display import (
     update_grid_state,
     grid_to_string,
 )
-from lod_hopper.types import Coordinate
+from lod_hopper.schemas import Coordinate
 import pytest
 import numpy as np
 from lod_hopper.lod_hopper import get_all_teleporation_rings

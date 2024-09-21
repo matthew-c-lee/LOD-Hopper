@@ -11,7 +11,7 @@ from progress.bar import Bar
 from threading import Event
 from queue import Queue
 from dataclasses import dataclass
-from lod_hopper.types import (
+from lod_hopper.schemas import (
     Coordinate,
     SideInfo,
     Blocks,
