@@ -11,9 +11,9 @@ UNLIT = 2
 
 @dataclass
 class GridData:
-    grid: np.ndarray  # NumPy array for storing grid states
-    order: Tuple[Coordinate]  # The order of coordinates for updating
-    coord_to_index: Dict[Coordinate, Tuple[int, int]]  # Map from Coordinate to (row, col) in NumPy array
+    grid: np.ndarray
+    order: Tuple[Coordinate, ...]
+    coord_to_index: Dict[Coordinate, Tuple[int, int]]
 
     min_x: Blocks
     max_x: Blocks
@@ -46,22 +46,21 @@ def get_grid_data(coordinates: Tuple[Coordinate, ...], blocks_per_tp: Blocks) ->
     min_z = min(coord.z for coord in coordinates)
     max_z = max(coord.z for coord in coordinates)
 
-    # Create the NumPy array initialized to EMPTY (0)
+    # Calculate grid dimensions
     grid_width = math.ceil((max_x - min_x + 1) / blocks_per_tp)
     grid_height = math.ceil((max_z - min_z + 1) / blocks_per_tp)
-    grid = np.full((grid_width, grid_height), EMPTY, dtype=int)
+    
+    # Initialize grid as EMPTY
+    grid = np.full((grid_height, grid_width), EMPTY, dtype=int)
 
-    # Mapping from Coordinate to index in the NumPy array
     coord_to_index = {}
 
-    # Populate the grid and coord_to_index map with UNLIT cells
     for coord in coordinates:
-        # Calculate the corresponding position in the grid based on min_x and min_z offsets
-        row = math.ceil((coord.z - min_z) / blocks_per_tp)
-        col = math.ceil((coord.x - min_x) / blocks_per_tp)
-        grid[row, col] = UNLIT  # Mark initial positions as UNLIT
-        coord_to_index[coord] = (row, col)  # Store the index in the mapping
-
+        col = (max_x - coord.x) // blocks_per_tp
+        row = (max_z - coord.z) // blocks_per_tp
+        
+        grid[row, col] = UNLIT
+        coord_to_index[coord] = (row, col)
 
     return GridData(
         grid=grid,
@@ -78,11 +77,9 @@ def update_grid_state(grid_data: GridData, current_index: int) -> None:
     if current_index >= len(grid_data.order):
         return  # Prevent out-of-bounds updates
 
-    # Get the coordinate and its corresponding position in the grid
     coord = grid_data.order[current_index]
     row, col = grid_data.coord_to_index[coord]
 
-    # Update the grid at the specified position to LIT
     grid_data.grid[row, col] = LIT
 
 def grid_to_string(grid_data: GridData) -> str:

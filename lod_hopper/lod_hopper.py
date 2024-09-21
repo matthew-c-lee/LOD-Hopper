@@ -213,6 +213,7 @@ def main(
                 teleport(x=coordinate.x, y=teleportation_height, z=coordinate.z)
 
 
+
 def get_all_teleporation_rings(
     desired_radius: Blocks,
     radius_done: Blocks,
@@ -229,35 +230,36 @@ def get_all_teleporation_rings(
         )
 
         yield TeleporationRing(
-            east=Side(
-                side_info=SideInfo.east,
-                coordinates=tuple(  # bottom right - goes up
-                    Coordinate(x=coord, z=current_ring_radius)
+            north=Side(  
+                side_info=SideInfo.north,
+                coordinates=tuple(  
+                    Coordinate(x=coord, z=current_ring_radius)  
                     for coord in coordinate_intervals
                 ),
             ),
-            north=Side(
-                side_info=SideInfo.north,
-                coordinates=tuple(  # top right - goes left
-                    Coordinate(x=current_ring_radius, z=coord)
-                    for coord in coordinate_intervals
-                )[::-1],
-            ),
-            west=Side(
+            west=Side(  
                 side_info=SideInfo.west,
-                coordinates=tuple(  # left top - goes down
-                    Coordinate(x=coord, z=-current_ring_radius)
+                coordinates=tuple(  
+                    Coordinate(x=current_ring_radius, z=coord)  
                     for coord in coordinate_intervals
                 )[::-1],
             ),
-            south=Side(
+            south=Side(  
                 side_info=SideInfo.south,
-                coordinates=tuple(  # bottom left - goes right
-                    Coordinate(x=-current_ring_radius, z=coord)
+                coordinates=tuple(  
+                    Coordinate(x=coord, z=-current_ring_radius) 
+                    for coord in coordinate_intervals
+                )[::-1],
+            ),
+            east=Side( 
+                side_info=SideInfo.east,
+                coordinates=tuple(  
+                    Coordinate(x=-current_ring_radius, z=coord) 
                     for coord in coordinate_intervals
                 ),
             ),
         )
+
 
         current_ring_radius -= blocks_per_tp
 

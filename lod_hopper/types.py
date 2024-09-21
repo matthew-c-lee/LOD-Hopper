@@ -20,10 +20,10 @@ class Direction(Enum):
     negative = auto()
 
 class SideInfo(Enum):
-    east = ("north", "south", Direction.positive, Dimension.z)
     north = ("west", "east", Direction.negative, Dimension.x)
     west = ("south", "north", Direction.negative, Dimension.z)
     south = ("east", "west", Direction.positive, Dimension.x)
+    east = ("north", "south", Direction.positive, Dimension.z)
 
     @property
     def clockwise_moving(self):
@@ -47,7 +47,7 @@ class Side(NamedTuple):
 
 
 class TeleporationRing(NamedTuple):
-    east: Side
     north: Side
     west: Side
     south: Side
+    east: Side
