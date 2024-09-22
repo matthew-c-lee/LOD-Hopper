@@ -39,21 +39,21 @@ That will make the mapper only load the chunks from radius 1000 to 3000, excludi
 
 ### Command Options
 
-- **`--desired-radius` or `-r`**
+- **`--desired-radius`** or **`-r`**
   - Desired radius to be loaded (**required**)
 
-- **`--exclude` or `-e`**
+- **`--exclude`** or **`-e`**
   - Exclude any inner radius already completed (default: 0)
 
-- **`--seconds-per-tp` or `-s`**
+- **`--seconds-per-tp`** or **`-s`**
   - Seconds to wait per teleport (default: 3)
   - Modify this depending on how long it takes to render chunks
 
-- **`--blocks-per-tp` or `-b`**
+- **`--blocks-per-tp`** or **`-b`**
   - Radius of blocks loaded per teleport jump (default: 100)
 
-- **`--height` or `-y`**
+- **`--height`** or **`-y`**
   - Y-axis coordinate each time you teleport (default: 180)
 
-- **`--no-visualization` or `-nov`**
+- **`--no-visualization`** or **`-nov`**
   - Turn off map visualization, which is enabled by default
