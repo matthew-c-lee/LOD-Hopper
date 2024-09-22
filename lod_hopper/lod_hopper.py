@@ -53,9 +53,10 @@ class ScreenUpdate:
     grid_data: GridData
 
     times_teleported: int
+    is_visualization_on: bool
 
 
-def update_screen(original_time_estimate: timedelta, num_coordinates: int):
+def update_screen(num_coordinates: int):
     screen_update = None
     shift_amount = 5
     total_progress = Bar(
@@ -148,11 +149,12 @@ def update_screen(original_time_estimate: timedelta, num_coordinates: int):
             current_index=screen_update.times_teleported,
         )
 
-        print("\n\033[1mVisualization\033[0m")
-        print("-" * 28)
-        print(grid_to_string(screen_update.grid_data))
+        if screen_update.is_visualization_on:
+            print("\n\033[1mVisualization\033[0m")
+            print("-" * 28)
+            print(grid_to_string(screen_update.grid_data))
 
-        print("\nThe visualization can be pretty big. Pause (CTRL+P) and scroll up for more info!")
+            print("\nThe visualization can be pretty big. Pause (CTRL+P) and scroll up for more info!")
 
 
 
@@ -232,6 +234,13 @@ def main():
         help="Your Y axis coordinate each time you teleport (default: 180)",
     )
 
+    parser.add_argument(
+        "-nov",
+        "--no-visualization",
+        action="store_true",
+        help="Will turn off map visualization, which is enabled by default.",
+    )
+
     args = parser.parse_args()
 
     desired_radius = Blocks(args.desired_radius)
@@ -239,6 +248,7 @@ def main():
     seconds_per_teleport = args.seconds_per_tp
     blocks_per_tp = args.blocks_per_tp
     teleportation_height = args.height
+    is_visualization_on = not args.no_visualization
 
     listener_thread = threading.Thread(target=listen_for_key, daemon=True)
     listener_thread.start()
@@ -271,7 +281,7 @@ def main():
 
     screen_thread = threading.Thread(
         target=update_screen,
-        args=(original_time_estimate, num_coordinates),
+        args=(num_coordinates,),
         daemon=True,
     )
     screen_thread.start()
@@ -312,6 +322,7 @@ def main():
                     side_info=side.side_info,
                     grid_data=grid_data,
                     times_teleported=times_teleported,
+                    is_visualization_on=is_visualization_on,
                 )
                 times_teleported += 1
 

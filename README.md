@@ -1,7 +1,7 @@
 # Lod Hopper
 
 Utility for loading a wide area in Minecraft via teleporting around in creative mode. 
-Created for the purpose of generating "LODs" for the "Distant Horizons" mod on servers, since Chunky can't do this.
+Created for the purpose of generating "LODs" for the "Distant Horizons" mod on servers, since Chunky isn't able to.
 
 ### Installation
 
@@ -17,7 +17,11 @@ Created for the purpose of generating "LODs" for the "Distant Horizons" mod on s
 
 ### Usage
 
-After typing in a valid command (ex: `lod_hopper -r 3000`), 
+- Type in a valid command, like `lod_hopper -r 3000`
+
+- Open up a minecraft world or server. Ensure you are flying in creative mode.
+
+- With the Minecraft window focused with no GUIs up, press `CTRL+P` to begin processing.
 
 ### Command Options
 
