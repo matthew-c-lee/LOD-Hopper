@@ -1,7 +1,7 @@
 # LOD Hopper
 
-Utility for loading a wide area in Minecraft via teleporting around in creative mode. 
-Created for the purpose of generating "LODs" for the "Distant Horizons" mod on servers, since [Chunky](https://github.com/pop4959/Chunky) is unable to.
+Utility for loading a wide area in Minecraft via teleporting around in creative mode.
+Created for the purpose of generating "LODs" (data used to create variable Level of Detail) for the "Distant Horizons" mod on servers, since [Chunky](https://github.com/pop4959/Chunky) is unable to.
 
 ![demonstration2](https://github.com/user-attachments/assets/bc0001bb-14c8-4ab8-a7fd-b91f24818d57)
 
