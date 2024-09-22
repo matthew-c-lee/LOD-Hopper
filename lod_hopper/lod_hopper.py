@@ -7,7 +7,6 @@ from pynput import keyboard
 import threading
 import os
 import argparse
-from progress.bar import Bar
 from threading import Event
 from queue import Queue
 from dataclasses import dataclass
@@ -21,20 +20,20 @@ from lod_hopper.schemas import (
 )
 from lod_hopper.grid_display import (
     GridData,
-    get_grid_data,
-    grid_to_string,
-    update_grid_state,
+    grid_data_initialize,
+    grid_data_to_string,
+    grid_data_add_visited,
 )
 
 # Disable pyautogui failsafe
 pyautogui.FAILSAFE = False
 
-# New type for blocks, representing Minecraft block coordinates
+# Global state
+teleportation_paused = True
+ctrl_pressed = False
 
 screen_update_queue = Queue()
 screen_update_event = Event()
-
-teleportation_active = False
 
 
 @dataclass(frozen=True)
@@ -58,15 +57,8 @@ class ScreenUpdate:
 
 def update_screen(num_coordinates: int):
     screen_update = None
-    shift_amount = 5
-    total_progress = Bar(
-        f"{'Total':<{shift_amount}}",
-        fill="◼",
-        empty_fill="▭",
-        suffix="",
-        width=20,
-        max=num_coordinates,
-    )
+    num_hyphens = 100
+    shift_amount = 30  # Width for the name padding
 
     while True:
         # Wait for the screen update event to be triggered
@@ -76,100 +68,131 @@ def update_screen(num_coordinates: int):
         if not screen_update_queue.empty():
             screen_update: ScreenUpdate = screen_update_queue.get()
 
-        os.system("cls") if os.name == "nt" else os.system("clear")
-
-        print("\033[1mLOD Hopper - CTRL+P to Pause\033[0m")
+        clear_screen()
 
         if not screen_update:
             print("Loading...")
             continue
 
+        status = "PAUSED" if teleportation_paused else "RUNNING"
+        print(bold("Progress") + f'{f"({status})":>{num_hyphens - 8}}')
+        print("-" * num_hyphens)
 
-        status = "RUNNING" if teleportation_active else "PAUSED"
-        print(f"\n\033[1mProgress\033[0m{f'({status})':>20}")
-        print("-" * 28)
-        print(
-            f"Time Remaining: {screen_update.time_estimate} ({screen_update.estimate_string})"
-        )
-        total_progress.goto(screen_update.times_teleported + 1)
+        # Total bar
+        bar = create_progress_bar(width=num_hyphens - shift_amount - 2, max=num_coordinates, current_index=screen_update.times_teleported, shift_amount=shift_amount, num_hyphens=num_hyphens)
+        print_wrapped(f"Total ({screen_update.time_estimate} left)", bar, shift_amount, num_hyphens)
 
-        print("\n")
+        print()
 
-        ring_progress = Bar(
-            f"{'Ring':<{shift_amount}}",
-            fill="◼",
-            empty_fill="▭",
-            suffix="",
-            width=screen_update.total_rings,
-            max=screen_update.total_rings,
-        )
-        ring_progress.goto(screen_update.ring_index + 1)
-        ring_progress.finish()
+        # Ring bar
+        bar = create_progress_bar(width=screen_update.total_rings, max=screen_update.total_rings, current_index=screen_update.ring_index, shift_amount=shift_amount, num_hyphens=num_hyphens)
+        print_wrapped("Ring", bar, shift_amount, num_hyphens)
 
-        side_progress = Bar(
-            f"{'Side':<{shift_amount}}",
-            fill="◼",
-            empty_fill="▭",
-            suffix="",
-            width=4,
-            max=4,
-        )
-        side_progress.goto(screen_update.side_index + 1)
-        side_progress.finish()
-
-        coordinates_progress = Bar(
-            f"{'Coord':<{shift_amount}}",
-            fill="◼",
-            empty_fill="▭",
-            suffix="",
-            width=screen_update.coordinates_in_side,
-            max=screen_update.coordinates_in_side,
-        )
-        coordinates_progress.goto(screen_update.coordinate_index + 1)
-        coordinates_progress.finish()
-
-        print("\n\033[1mLocation\033[0m")
-        print("-" * 28)
-
-        print(
-            f"Teleporting to (x: {screen_update.coordinate.x}, z: {screen_update.coordinate.z})"
-        )
-
+        # Side bar
         side_info = screen_update.side_info
-
+        bar = create_progress_bar(width=4, max=4, current_index=screen_update.side_index, shift_amount=shift_amount, num_hyphens=num_hyphens)
         sign = "+" if side_info.direction == Direction.positive else "-"
+        print_wrapped(f"Side  ({side_info.name.capitalize()}, Moving {sign}{side_info.dimension_moving_in.name.upper()}/{side_info.clockwise_moving.capitalize()})", bar, shift_amount, num_hyphens)
 
-        print(
-            f"Side: {side_info.name.capitalize()} | Direction: "
-            f"{side_info.clockwise_moving.capitalize()} ({sign}{side_info.dimension_moving_in.name})"
+        # Coordinate bar
+        bar = create_progress_bar(
+            width=screen_update.coordinates_in_side, max=screen_update.coordinates_in_side, current_index=screen_update.coordinate_index, shift_amount=shift_amount, num_hyphens=num_hyphens
         )
+        print_wrapped(f"Coord (x: {screen_update.coordinate.x},  z: {screen_update.coordinate.z})", bar, shift_amount, num_hyphens)
 
-        update_grid_state(
+        grid_data_add_visited(
             screen_update.grid_data,
             current_index=screen_update.times_teleported,
         )
 
         if screen_update.is_visualization_on:
-            print("\n\033[1mVisualization\033[0m")
-            print("-" * 28)
-            print(grid_to_string(screen_update.grid_data))
-
-            print("\nThe visualization can be pretty big. Pause (CTRL+P) and scroll up for more info!")
+            print()
+            print(bold("Visualization"))
+            print("-" * num_hyphens)
+            print(grid_data_to_string(screen_update.grid_data))
+            print()
+            print("The visualization can be pretty big. Pause (CTRL+P) and scroll up for more info!")
             print("It can also be turned off with -nov")
 
+        print()
+        print(bold("CTRL+P to Pause"))
 
 
-ctrl_pressed = False
+def create_progress_bar(width: int, max: int, current_index: int, shift_amount: int, num_hyphens: int) -> str:
+    progress = current_index / max
+    filled_length = int(width * progress)
+    bar = '◼' * filled_length + '▭' * (width - filled_length)
+
+    return f"|{bar}|"
+
+
+def print_wrapped(name: str, bar: str, shift_amount: int, num_hyphens: int) -> None:
+    """
+    Prints the progress bar, wrapping to the next line if it's too long.
+    Wrapped lines will be aligned with the start of the bar.
+    The last line will include the ending delimiter '|' if the bar has delimiters.
+    """
+    # Check if the bar has delimiters like '|'
+    has_delimiters = bar.startswith('|') and bar.endswith('|')
+
+    # Extract the bar content without delimiters
+    if has_delimiters:
+        bar_content = bar[1:-1]
+        start_delim = '|'
+        end_delim = '|'
+    else:
+        bar_content = bar
+        start_delim = ''
+        end_delim = ''
+
+    # Calculate available space for the bar content after the name and delimiters on the first line
+    available_width_first_line = num_hyphens - shift_amount - len(start_delim) - len(end_delim)
+
+    # Get the first part of the bar content that fits on the first line
+    first_part = bar_content[:available_width_first_line]
+    bar_content = bar_content[available_width_first_line:]  # Update bar_content after slicing
+
+    # Determine if there is more bar content after the first line
+    is_last_line = not bar_content
+
+    # Add ending delimiter if it's the last line
+    end_char = end_delim if is_last_line else ''
+    print(f"{name:<{shift_amount}}{start_delim}{first_part}{end_char}")
+
+    # For wrapped lines, align with the start of the bar
+    bar_indent = shift_amount + len(start_delim)
+    # Calculate available width for wrapped lines
+    available_width_wrapped = num_hyphens - bar_indent - len(end_delim)
+
+    # Continue printing wrapped lines
+    while bar_content:
+        # Get the next segment of the bar content
+        chunk_to_print = bar_content[:available_width_wrapped]
+        bar_content = bar_content[available_width_wrapped:]  # Update bar_content after slicing
+
+        # Check if this is the last line
+        is_last_line = not bar_content
+
+        # Add ending delimiter if it's the last line
+        end_char = end_delim if is_last_line else ''
+
+        # Print the bar segment aligned with the bar start
+        print(f"{'':<{bar_indent}}{chunk_to_print}{end_char}")
+
+
+def bold(string):
+    return f"\033[1m{string}\033[0m"
+
 
 def on_press(key):
     global ctrl_pressed
-    global teleportation_active
+    global teleportation_paused
     if key == keyboard.Key.ctrl_l:
         ctrl_pressed = True
 
     if ctrl_pressed and hasattr(key, "char") and key.char == "p":
         screen_update_event.set()
-        teleportation_active = not teleportation_active
+        teleportation_paused = not teleportation_paused
 
 
 def on_release(key):
@@ -180,13 +203,93 @@ def on_release(key):
 
 
 def listen_for_key():
-    with keyboard.Listener(
-        on_press=on_press, on_release=on_release
-    ) as listener:
+    with keyboard.Listener(on_press=on_press, on_release=on_release) as listener:
         listener.join()
 
 
-def main():
+def clear_screen():
+    return os.system("cls") if os.name == "nt" else os.system("clear")
+
+
+def get_estimate_string(time_estimate: timedelta) -> str:
+    hours, minutes, seconds = (float(num) for num in (str(time_estimate).split(":")))
+
+    return (
+        f"{hours + minutes / 60:.1f} {'hours' if hours > 1 else 'hour'}"
+        if hours != 0
+        else f"{minutes + seconds / 60:.0f} {'minutes' if minutes > 1 else 'minute'}"
+        if minutes != 0
+        else f"{seconds:.0f} {'seconds' if seconds > 1 else 'second'}"
+    )
+
+
+def get_all_teleporation_rings(
+    desired_radius: Blocks,
+    radius_done: Blocks,
+    blocks_per_tp: int,
+) -> Iterator[TeleporationRing]:
+    current_ring_radius = desired_radius
+
+    while current_ring_radius + blocks_per_tp > radius_done:
+        # Negative to positive x
+        coordinate_intervals = load_line(
+            start_coord=-current_ring_radius,
+            end_coord=current_ring_radius,
+            teleport_jump_amount=blocks_per_tp,
+        )
+
+        yield TeleporationRing(
+            north=Side(
+                side_info=SideInfo.north,
+                coordinates=tuple(Coordinate(x=coord, z=current_ring_radius) for coord in coordinate_intervals),
+            ),
+            west=Side(
+                side_info=SideInfo.west,
+                coordinates=tuple(Coordinate(x=current_ring_radius, z=coord) for coord in coordinate_intervals)[::-1],
+            ),
+            south=Side(
+                side_info=SideInfo.south,
+                coordinates=tuple(Coordinate(x=coord, z=-current_ring_radius) for coord in coordinate_intervals)[::-1],
+            ),
+            east=Side(
+                side_info=SideInfo.east,
+                coordinates=tuple(Coordinate(x=-current_ring_radius, z=coord) for coord in coordinate_intervals),
+            ),
+        )
+
+        current_ring_radius -= blocks_per_tp
+
+
+def write_chat_message(message: str):
+    pyautogui.press("t")
+    sleep(0.1)
+
+    pyautogui.typewrite(message)
+    sleep(0.1)
+
+    pyautogui.press("enter")
+
+
+def teleport(x: Blocks, y: Blocks, z: Blocks):
+    write_chat_message(message=f"/tp {x} {y} {z}")
+
+
+def load_line(
+    start_coord: Blocks,
+    end_coord: Blocks,
+    teleport_jump_amount: Blocks,
+) -> tuple[Blocks, ...]:
+    total_distance = abs(end_coord - start_coord)
+
+    num_steps = total_distance // teleport_jump_amount + 1
+
+    coordinate_values = numpy.linspace(start_coord, end_coord, num_steps)
+
+    return tuple(map(int, coordinate_values))
+
+
+def command_line_parsing():
+    """Command line arguments"""
     parser = argparse.ArgumentParser(
         description="""
         Script for loading a wide area in Minecraft. 
@@ -242,7 +345,11 @@ def main():
         help="Will turn off map visualization, which is enabled by default.",
     )
 
-    args = parser.parse_args()
+    return parser.parse_args()
+
+
+def main():
+    args = command_line_parsing()
 
     desired_radius = Blocks(args.desired_radius)
     radius_done = Blocks(args.exclude)
@@ -251,34 +358,20 @@ def main():
     teleportation_height = args.height
     is_visualization_on = not args.no_visualization
 
-    listener_thread = threading.Thread(target=listen_for_key, daemon=True)
-    listener_thread.start()
+    """Set things up"""
+    keyboard_listener = threading.Thread(target=listen_for_key, daemon=True)
+    keyboard_listener.start()
 
-    os.system("cls") if os.name == "nt" else os.system("clear")
+    clear_screen()
     print("Make sure your world is open with no GUIs up.")
     print('Press "CTRL+P" to start and stop!')
 
-    ring_list = tuple(
-        get_all_teleporation_rings(desired_radius, radius_done, blocks_per_tp)
-    )
+    ring_list = tuple(get_all_teleporation_rings(desired_radius, radius_done, blocks_per_tp))
 
-    coordinates_list = tuple(
-        coordinates
-        for ring in ring_list
-        for side in ring
-        for coordinates in side.coordinates
-    )
+    coordinates_list = tuple(coordinates for ring in ring_list for side in ring for coordinates in side.coordinates)
 
-    grid_data = get_grid_data(coordinates_list, blocks_per_tp)
-
+    grid_data = grid_data_initialize(coordinates_list, blocks_per_tp)
     num_coordinates = len(coordinates_list)
-
-    total_seconds = num_coordinates * seconds_per_teleport
-    original_time_estimate = timedelta(seconds=total_seconds)
-
-    print(f"\nTime to Complete: {original_time_estimate}")
-
-    time_estimate = original_time_estimate
 
     screen_thread = threading.Thread(
         target=update_screen,
@@ -287,8 +380,19 @@ def main():
     )
     screen_thread.start()
 
+    """Timing estimate stuff"""
+    total_seconds = num_coordinates * seconds_per_teleport
+    original_time_estimate = timedelta(seconds=total_seconds)
+
+    print(f"\nTime to Complete: {original_time_estimate}")
+
+    time_estimate = original_time_estimate
+
+    """Main process loop"""
     times_teleported = 0
 
+    # Triple for loop so that we can track where we are in relation to each part
+    # (so we can know which ring we're on, which side we're at, and which coordinate of the side we're at)
     for ring_i, ring in enumerate(ring_list):
         for side_i, side in enumerate(ring):
             for coordinate_i, coordinate in enumerate(side.coordinates):
@@ -297,18 +401,10 @@ def main():
 
                 time_estimate -= timedelta(seconds=seconds_per_teleport)
 
-                hours, minutes, seconds = (
-                    float(num) for num in (str(time_estimate).split(":"))
-                )
-                estimate_string = (
-                    f"{hours + minutes / 60:.1f} hours"
-                    if hours != 0
-                    else f"{minutes + seconds / 60:.0f} minutes"
-                    if minutes != 0
-                    else f"{seconds:.0f} seconds left"
-                )
+                estimate_string = get_estimate_string(time_estimate)
 
-                while not teleportation_active:
+                while teleportation_paused:
+                    # If it's paused, we just chill here.
                     sleep(1)
 
                 screen_update = ScreenUpdate(
@@ -325,89 +421,14 @@ def main():
                     times_teleported=times_teleported,
                     is_visualization_on=is_visualization_on,
                 )
-                times_teleported += 1
 
+                # Send signal to the update_screen thread.
                 screen_update_queue.put(screen_update)
                 screen_update_event.set()
 
                 teleport(x=coordinate.x, y=teleportation_height, z=coordinate.z)
 
-
-def get_all_teleporation_rings(
-    desired_radius: Blocks,
-    radius_done: Blocks,
-    blocks_per_tp: int,
-) -> Iterator[TeleporationRing]:
-    current_ring_radius = desired_radius
-
-    while current_ring_radius + blocks_per_tp > radius_done:
-        # Negative to positive x
-        coordinate_intervals = load_line(
-            start_coord=-current_ring_radius,
-            end_coord=current_ring_radius,
-            teleport_jump_amount=blocks_per_tp,
-        )
-
-        yield TeleporationRing(
-            north=Side(
-                side_info=SideInfo.north,
-                coordinates=tuple(
-                    Coordinate(x=coord, z=current_ring_radius)
-                    for coord in coordinate_intervals
-                ),
-            ),
-            west=Side(
-                side_info=SideInfo.west,
-                coordinates=tuple(
-                    Coordinate(x=current_ring_radius, z=coord)
-                    for coord in coordinate_intervals
-                )[::-1],
-            ),
-            south=Side(
-                side_info=SideInfo.south,
-                coordinates=tuple(
-                    Coordinate(x=coord, z=-current_ring_radius)
-                    for coord in coordinate_intervals
-                )[::-1],
-            ),
-            east=Side(
-                side_info=SideInfo.east,
-                coordinates=tuple(
-                    Coordinate(x=-current_ring_radius, z=coord)
-                    for coord in coordinate_intervals
-                ),
-            ),
-        )
-
-        current_ring_radius -= blocks_per_tp
-
-
-def write_chat_message(message: str):
-    pyautogui.press("t")
-    sleep(0.1)
-
-    pyautogui.typewrite(message)
-    sleep(0.1)
-
-    pyautogui.press("enter")
-
-
-def teleport(x: Blocks, y: Blocks, z: Blocks):
-    write_chat_message(message=f"/tp {x} {y} {z}")
-
-
-def load_line(
-    start_coord: Blocks,
-    end_coord: Blocks,
-    teleport_jump_amount: Blocks,
-) -> tuple[Blocks, ...]:
-    total_distance = abs(end_coord - start_coord)
-
-    num_steps = total_distance // teleport_jump_amount + 1
-
-    coordinate_values = numpy.linspace(start_coord, end_coord, num_steps)
-
-    return tuple(map(int, coordinate_values))
+                times_teleported += 1
 
 
 if __name__ == "__main__":

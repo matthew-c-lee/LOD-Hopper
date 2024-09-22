@@ -1,14 +1,11 @@
 from enum import Enum, auto
 from typing import NamedTuple, NewType
-from dataclasses import dataclass
-
 
 Blocks = NewType("Blocks", int)
 
 class Coordinate(NamedTuple):
     x: Blocks
     z: Blocks
-
 
 class Dimension(Enum):
     x = auto()
