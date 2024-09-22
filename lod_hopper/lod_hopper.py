@@ -155,6 +155,7 @@ def update_screen(num_coordinates: int):
             print(grid_to_string(screen_update.grid_data))
 
             print("\nThe visualization can be pretty big. Pause (CTRL+P) and scroll up for more info!")
+            print("It can also be turned off with -nov")
 
 
 

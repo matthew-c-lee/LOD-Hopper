@@ -40,3 +40,6 @@ Created for the purpose of generating "LODs" for the "Distant Horizons" mod on s
 
 - **`--height` or `-y`**
   - Y-axis coordinate each time you teleport (default: 180)
+
+- **`--no-visualization` or `-nov`**
+  - Will turn off map visualization, which is enabled by default
